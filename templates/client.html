@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Ellie</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+<script type="text/javascript" src="https://media.twiliocdn.com/sdk/js/client/v1.3/twilio.min.js"></script>
+<script type="text/javascript">
+
+var currConn = null;
+Twilio.Device.setup("{{ twilio_token }}");
+
+Twilio.Device.ready(function (device) {
+    $("#log").text("Ready");
+    call();
+});
+
+Twilio.Device.error(function (error) {
+    $("#log").text("Error: " + error.message);
+});
+
+Twilio.Device.connect(function (conn) {
+    $("#log").text("Successfully connected");
+});
+
+Twilio.Device.disconnect(function (conn) {
+    $("#log").text("Call ended");
+});
+
+/* Listen for incoming connections */
+Twilio.Device.incoming(function (conn) {
+    $("#log").text("Incoming connection from " + conn.parameters.To);
+    // accept the incoming connection and start two-way audio
+    conn.accept();
+    currConn = conn;
+});
+
+function call() {
+    var params = {"token":"{{ call_token }}"}
+    currConn = Twilio.Device.connect(params);
+}
+
+function hangup() {
+    Twilio.Device.disconnectAll();
+    currConn = null;
+}
+
+function unlockDoor() {
+    currConn.sendDigits("{{ door_unlock_digits }}");
+    setTimeout(function(){
+        hangup();
+    }, 1000);
+}
+
+</script>
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h1>Front Door</h1>
+            <p id="log">Connecting...</p>
+            <p>
+                <div onclick="hangup();" class="btn btn-lg btn-primary" role="button">Hang Up</div>
+                <div onclick="unlockDoor();" class="btn btn-lg btn-primary" role="button">Unlock Front Door</div>
+            </p>
+        </div>
+    </div> <!-- /container -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+</body>
+</html>

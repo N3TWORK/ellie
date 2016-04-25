@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+
+from flask import Flask, render_template, redirect, request
+from twilio.util import TwilioCapability
+import twilio.twiml
+from slackclient import SlackClient
+import uuid
+import os
+
+base_url = os.environ["BASE_URL"]
+
+door_unlock_digits = os.environ["DOOR_UNLOCK_DIGITS"]
+slack_token = os.environ["SLACK_TOKEN"]
+slack_channel = os.environ["SLACK_CHANNEL"]
+ 
+# Find these values at https://twilio.com/user/account
+twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
+twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+# https://www.twilio.com/user/account/voice/dev-tools/twiml-apps
+twilio_application_sid = os.environ["TWILIO_APPLICATION_SID"]
+
+twilio_queue_name = "Ellie Queue"
+twilio_client_name = "ellie"
+
+pending_call_token = None
+
+application = Flask(__name__)
+
+
+# Post message to slack.
+def post_slack_message(msg):
+    sc = SlackClient(slack_token)
+    sc.api_call("chat.postMessage", channel=slack_channel, text=msg, username='doorbot', icon_emoji=":door:")
+
+
+# Answer link from slack. Will answer a call if one is outstanding or say the call has already been answered.
+@application.route('/answer', methods=['GET', 'POST'])
+def answer():
+    global pending_call_token
+    token = request.args.get("token")
+    print "/answer"
+    print "pending_call_token: {}".format(pending_call_token)
+    print "token: {}".format(token)
+    if pending_call_token and (token == pending_call_token):
+        return redirect("{}/?token={}".format(base_url, token), code=302)
+ 
+    return render_template("answered.html")
+
+
+# Twilio voice webhook.
+# Either place the call into the queue, or if answer is specified, connect caller with current call in queue.
+@application.route('/voice', methods=['GET', 'POST'])
+def queue():
+    global pending_call_token
+    token = request.args.get("token")
+
+    print "/voice"
+    print "pending_call_token: {}".format(pending_call_token)
+    print "token: {}".format(token)
+
+    if pending_call_token and (token == pending_call_token):
+        r = twilio.twiml.Response()
+        with r.dial() as d:
+            d.queue(twilio_queue_name)
+            pending_call_token = None
+            post_slack_message("Someone answered the front door")
+            return str(r)
+
+    else:
+        pending_call_token = str(uuid.uuid4())
+        post_slack_message("Someone is at the front door. <{}/answer?token={}|Click to answer>".format(base_url, pending_call_token))
+    
+        resp = twilio.twiml.Response()
+        resp.enqueue(twilio_queue_name)
+ 
+    return str(resp)
+
+# The web client interface. 
+@application.route('/', methods=['GET', 'POST'])
+def client():
+    global pending_call_token
+    token = request.args.get("token")
+
+    print "/"
+    print "pending_call_token: {}".format(pending_call_token)
+    print "token: {}".format(token)
+    
+    if pending_call_token and (token == pending_call_token):
+        capability = TwilioCapability(twilio_account_sid, twilio_auth_token)
+        capability.allow_client_outgoing(twilio_application_sid)
+        capability.allow_client_incoming(twilio_client_name)
+        twilio_token = capability.generate()
+ 
+        return render_template('client.html', twilio_token=twilio_token, call_token=pending_call_token, door_unlock_digits=door_unlock_digits)
+    else:
+        return render_template("answered.html")
+
+ 
+if __name__ == "__main__":
+    application.debug = True
+    application.run()
