@@ -73,7 +73,8 @@ Now, add Environment Properties from the Software Configuration section of your 
 - `BASE_URL` to contain the https:// based URL that points to your deployment. No trailing slash.
 - `DOOR_UNLOCK_DIGITS` to contain the digit or digits you key in on a phone to unlock the door when called from the callbox.
 - `SLACK_CHANNEL` to contain the #channel name for where the slack notifications should be sent for callbox activity. 
-
+- `TWILIO_MAX_HOLD_DURATION` Number of seconds before forwarding call to the `TWILIO_FALLBACK_NUMBER`.
+- `TWILIO_FALLBACK_NUMBER` Phone number to forward the call to if no one handles the call from the Slack message by the timeout. If not specified, the call will be disconnected after the timeout.
 
 ### Test It Out!
 Have someone call your phone number from a phone. It should be answered and they will be placed on hold.
