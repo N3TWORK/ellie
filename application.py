@@ -61,7 +61,7 @@ def wait_for_fallback(call_sid):
 # Post message to slack.
 def post_slack_message(msg):
     sc = SlackClient(slack_token)
-    sc.api_call("chat.postMessage", channel=slack_channel, text=msg, username='doorbot', icon_emoji=":door:")
+    sc.api_call("chat.postMessage", channel=slack_channel, text=msg, username='front-desk', icon_emoji=":phone:")
 
 
 # Endpoint called by Twilio after call is redirected to fallback number.
@@ -114,12 +114,12 @@ def queue():
             pending_call_token = None
             pending_call_sid = None
 
-            post_slack_message("Someone answered the front door")
+            post_slack_message("Someone answered the call.")
             return str(r)
 
     else:
         pending_call_token = str(uuid.uuid4())
-        post_slack_message("Someone is at the front door. <{}/answer?token={}|Click to answer>".format(base_url, pending_call_token))
+        post_slack_message("Someone is calling. <{}/answer?token={}|Click to answer>".format(base_url, pending_call_token))
         r = twilio.twiml.Response()
         r.enqueue(twilio_queue_name)
         call_sid = request.args.get("CallSid")
